@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using FindFiles.Model;
 
@@ -15,6 +16,47 @@ namespace FindFiles.ViewModel
 		private string _currentDirectory;
 		private string _searchRegex;
 
+		public string CurrentDirectory
+		{
+			get
+			{
+				_currentDirectory ??= AppInfo.GetInfo().CurrentDirectory;
+				return _currentDirectory;
+			}
+
+			set
+			{
+				_currentDirectory = value;
+				AppInfo.SaveInfo(_currentDirectory, _searchRegex);
+			}
+		}
+
+		public string SearchRegex
+		{
+			get
+			{
+				_searchRegex ??= AppInfo.GetInfo().SearchRegex;
+				return _searchRegex;
+			}
+
+			set
+			{
+				_searchRegex = value;
+				AppInfo.SaveInfo(_currentDirectory, _searchRegex);
+			}
+		}
+
+		public IList<TreeViewNodes> TreeViewNodes { get; set; }
+		private bool FindCommandWorking { get; set; } = true;
+
+		public int CountFindFiles { get; set; }
+		public int CountAllFiles { get; set; }
+
+		public string TimeInfo { get; set; } = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
+		public DateTime _startTime { get; set; }
+
+		public string SearchInfo { get; set; }
+
 		public event PropertyChangedEventHandler PropertyChanged;
 
 		protected void OnPropertyChanged(string p)
@@ -22,11 +64,21 @@ namespace FindFiles.ViewModel
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
 		}
 
+		public MainViewModel()
+		{
+			_task = new(StartTimer);
+		}
+
+		private Task _task;
+
 		public ICommand FindCommand => new RelayCommand(action =>
 		{
 			SearchInfo = string.Empty;
 			_startTime = DateTime.Now;
-			new Thread(() => { StartTimer(); }).Start();
+
+			if (_task.Status != TaskStatus.Running)
+				_task.Start();
+
 			try
 			{
 				var t = Directory.GetDirectories(CurrentDirectory);
@@ -85,44 +137,5 @@ namespace FindFiles.ViewModel
 				OnPropertyChanged(nameof(TimeInfo));
 			}
 		}
-
-		public string CurrentDirectory
-		{
-			get
-			{
-				_currentDirectory ??= AppInfo.GetInfo().CurrentDirectory;
-				return _currentDirectory;
-			}
-
-			set
-			{
-				_currentDirectory = value;
-				AppInfo.SaveInfo(_currentDirectory, _searchRegex);
-			}
-		}
-		public string SearchRegex
-		{
-			get
-			{
-				_searchRegex ??= AppInfo.GetInfo().SearchRegex;
-				return _searchRegex;
-			}
-
-			set
-			{
-				_searchRegex = value;
-				AppInfo.SaveInfo(_currentDirectory, _searchRegex);
-			}
-		}
-		public IList<TreeViewNodes> TreeViewNodes { get; set; }
-		private bool FindCommandWorking { get; set; } = true;
-
-		public int CountFindFiles { get; set; }
-		public int CountAllFiles { get; set; }
-
-		public string TimeInfo { get; set; } = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
-		public DateTime _startTime { get; set; }
-
-		public string SearchInfo { get; set; }
 	}
 }
